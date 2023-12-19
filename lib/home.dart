@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors, 
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -12,7 +14,10 @@ class InAppWebViewScreen extends StatefulWidget {
 
 class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
   final GlobalKey webViewKey = GlobalKey();
+  //production
   Uri myUrl = Uri.parse("https://www.gulahmedshop.com/");
+  //staging
+  // Uri myUrl = Uri.parse("https://mcstaging.gulahmedshop.com/");
   late final InAppWebViewController webViewController;
   late final PullToRefreshController pullToRefreshController;
   double progress = 0;
@@ -24,9 +29,9 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
     pullToRefreshController = (kIsWeb
         ? null
         : PullToRefreshController(
-            options: PullToRefreshOptions(
-              color: Colors.green,
-            ),
+            // options: PullToRefreshOptions(
+            //   color: Colors.green,
+            // ),
             onRefresh: () async {
               if (defaultTargetPlatform == TargetPlatform.android) {
                 webViewController.reload();
@@ -47,35 +52,27 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
                 onWillPop: () => _goBack(context),
                 child: Stack(
                   children: [
-                    progress < 1.0
-                        ? Center(
-                            child: Center(
-                                child: Image.asset(
-                              'assets/images/ideas-logo.webp',
-                              scale: 1.7,
-                              color: Colors.green,
-                            )),
-                          )
-                        : Container(),
+                    progress < 100 ? SplashScreen() : Container(),
                     Column(children: <Widget>[
                       Expanded(
                           child: Stack(children: [
                         InAppWebView(
                           key: webViewKey,
-                          initialUrlRequest: URLRequest(url: myUrl),
+                          initialUrlRequest: URLRequest(url: WebUri.uri(myUrl)),
                           initialOptions: InAppWebViewGroupOptions(
                             crossPlatform: InAppWebViewOptions(
-                              javaScriptCanOpenWindowsAutomatically: true,
-                              javaScriptEnabled: true,
-                              useOnDownloadStart: true,
-                              useOnLoadResource: true,
-                              useShouldOverrideUrlLoading: true,
-                              mediaPlaybackRequiresUserGesture: true,
-                              allowFileAccessFromFileURLs: true,
-                              allowUniversalAccessFromFileURLs: true,
-                              verticalScrollBarEnabled: true,
-                              userAgent: 'random',
-                            ),
+                                transparentBackground: true,
+                                javaScriptCanOpenWindowsAutomatically: true,
+                                javaScriptEnabled: true,
+                                useOnDownloadStart: true,
+                                useOnLoadResource: true,
+                                useShouldOverrideUrlLoading: true,
+                                mediaPlaybackRequiresUserGesture: true,
+                                allowFileAccessFromFileURLs: true,
+                                allowUniversalAccessFromFileURLs: true,
+                                verticalScrollBarEnabled: true,
+                                userAgent: 'random',
+                                cacheEnabled: true),
                             android: AndroidInAppWebViewOptions(
                                 useHybridComposition: true,
                                 allowContentAccess: true,
