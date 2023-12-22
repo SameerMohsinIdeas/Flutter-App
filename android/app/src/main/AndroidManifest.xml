@@ -4,17 +4,17 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.CAMERA" />
     <application
-        android:label="gulahmedshop"
+        android:label="Ideas_Staging"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-            <provider
-    android:name="com.pichillilorenzo.flutter_inappwebview_android.InAppWebViewFileProvider"
-    android:authorities="${applicationId}.flutter_inappwebview_android.fileprovider"
-    android:exported="false"
-    android:grantUriPermissions="true">
+        <provider
+            android:name="com.pichillilorenzo.flutter_inappwebview_android.InAppWebViewFileProvider"
+            android:authorities="${applicationId}.flutter_inappwebview_android.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
     <meta-data
         android:name="android.support.FILE_PROVIDER_PATHS"
         android:resource="@xml/provider_paths" />

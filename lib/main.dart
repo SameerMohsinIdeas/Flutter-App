@@ -1,6 +1,7 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -22,7 +23,11 @@ List<String> linksToOpenInChrome = [
   "https://twitter.com/intent/tweet",
   "http://pinterest.com/pin/create/button/"
 ];
-
+//production
+String _baseUrlProduction = "https://gulahmedshop.com/";
+//staging
+String _baseUrlStaging = "https://mcstaging.gulahmedshop.com/";
+String url = _baseUrlProduction;
 Future main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -42,10 +47,10 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with TickerProviderStateMixin {
   final GlobalKey webViewKey = GlobalKey();
-
   InAppWebViewController? webViewController;
+
   InAppWebViewSettings settings = InAppWebViewSettings(
       userAgent:
           "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Mobile Safari/537.36",
@@ -60,9 +65,7 @@ class _MyAppState extends State<MyApp> {
       iframeAllowFullscreen: true);
 
   PullToRefreshController? pullToRefreshController;
-  String url = "https://www.gulahmedshop.com/";
   double progress = 0;
-  final urlController = TextEditingController();
 
   @override
   void initState() {
@@ -89,18 +92,6 @@ class _MyAppState extends State<MyApp> {
     return Scaffold(
         body: SafeArea(
             child: Column(children: <Widget>[
-      // TextField(
-      //   decoration: const InputDecoration(prefixIcon: Icon(Icons.search)),
-      //   controller: urlController,
-      //   keyboardType: TextInputType.url,
-      //   onSubmitted: (value) {
-      //     var url = WebUri(value);
-      //     if (url.scheme.isEmpty) {
-      //       url = WebUri("https://www.google.com/search?q=$value");
-      //     }
-      //     webViewController?.loadUrl(urlRequest: URLRequest(url: url));
-      //   },
-      // ),
       Expanded(
         child: Stack(
           children: [
@@ -117,18 +108,12 @@ class _MyAppState extends State<MyApp> {
               },
               child: InAppWebView(
                 key: webViewKey,
-                initialUrlRequest: URLRequest(url: WebUri(url)),
+                initialUrlRequest: URLRequest(url: WebUri(_baseUrlStaging)),
                 initialSettings: settings,
                 pullToRefreshController: pullToRefreshController,
                 onWebViewCreated: (controller) {
                   webViewController = controller;
                 },
-                // onLoadStart: (controller, url) {
-                //   setState(() {
-                //     this.url = url.toString();
-                //     urlController.text = this.url;
-                //   });
-                // },
                 onPermissionRequest: (controller, request) async {
                   return PermissionResponse(
                       resources: request.resources,
@@ -142,10 +127,6 @@ class _MyAppState extends State<MyApp> {
                 },
                 onLoadStop: (controller, url) async {
                   pullToRefreshController?.endRefreshing();
-                  setState(() {
-                    this.url = url.toString();
-                    urlController.text = this.url;
-                  });
                 },
                 onReceivedError: (controller, request, error) {
                   pullToRefreshController?.endRefreshing();
@@ -156,7 +137,6 @@ class _MyAppState extends State<MyApp> {
                   }
                   setState(() {
                     this.progress = progress / 100;
-                    urlController.text = url;
                   });
                 },
                 onCreateWindow: (controller, createWindowAction) async {
@@ -177,16 +157,11 @@ class _MyAppState extends State<MyApp> {
                     },
                   );
                   headlessWebView?.run();
-
                   // return true to tell that we are handling the new window creation action
                   return true;
                 },
                 onUpdateVisitedHistory: (controller, url, androidIsReload) {
                   print("here is the url: " + url.toString());
-                  setState(() {
-                    this.url = url.toString();
-                    urlController.text = this.url;
-                  });
                 },
                 onConsoleMessage: (controller, consoleMessage) {
                   if (kDebugMode) {
@@ -196,46 +171,25 @@ class _MyAppState extends State<MyApp> {
               ),
             ),
             progress < 1.0
-                ? LinearProgressIndicator(
-                    backgroundColor: Colors.white,
-                    color: Colors.green,
-                    value: progress)
+                ? Center(
+                    child: Container(
+                        height: double.infinity,
+                        width: double.infinity,
+                        color: Colors.grey.withOpacity(0.5),
+                        child: BackdropFilter(
+                            filter:
+                                ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                            child: Image.asset(
+                              "assets/loader.gif",
+                              scale: 1.7,
+                            ))),
+                  )
                 : Container(),
           ],
         ),
       ),
-      // ButtonBar(
-      //   alignment: MainAxisAlignment.center,
-      //   children: <Widget>[
-      //     ElevatedButton(
-      //       child: const Icon(Icons.arrow_back),
-      //       onPressed: () {
-      //         webViewController?.goBack();
-      //       },
-      //     ),
-      //     ElevatedButton(
-      //       child: const Icon(Icons.arrow_forward),
-      //       onPressed: () {
-      //         webViewController?.goForward();
-      //       },
-      //     ),
-      //     ElevatedButton(
-      //       child: const Icon(Icons.refresh),
-      //       onPressed: () {
-      //         webViewController?.reload();
-      //       },
-      //     ),
-      //   ],
-      // ),
     ])));
   }
-}
-
-Future<bool> _launchURL(String uri) async {
-  return await launchUrl(
-    uri as Uri,
-    mode: LaunchMode.platformDefault,
-  );
 }
 
 Future<NavigationActionPolicy> _shouldOverrideUrlLoading(
@@ -267,7 +221,10 @@ Future<NavigationActionPolicy> _shouldOverrideUrlLoading(
     print("links to open in chrome");
     await launchUrl(uri, mode: LaunchMode.externalApplication);
     return NavigationActionPolicy.CANCEL;
-  } else if (uriString.contains("https://www.gulahmedshop.com/")) {
+  } else if (uriString.contains("https://www.gulahmedshop.com/") ||
+      uriString.contains("https://uae.gulahmedshop.com/") ||
+      uriString.contains("https://mcstaging.gulahmedshop.com/") ||
+      uriString.contains("https://mcstaginguae.gulahmedshop.com/")) {
     print("links to open in app: " + uriString);
     return NavigationActionPolicy.ALLOW;
   } else {
@@ -276,20 +233,26 @@ Future<NavigationActionPolicy> _shouldOverrideUrlLoading(
     return NavigationActionPolicy.CANCEL;
   }
 }
-
-Future<bool> _onCreateWindow(
-    InAppWebViewController controller, CreateWindowAction action) async {
-  var uri = action.request.url;
-  if (uri == null) {
-    // controller.goBack();
-    return false;
-  }
-  final uriString = uri.toString();
-  if (uriString.startsWith('http://') || uriString.startsWith('https://')) {
-    return true;
-  } else {
-    // controller.goBack();
-    _launchURL(uriString);
-    return false;
-  }
-}
+//unused
+// Future<bool> _launchURL(String uri) async {
+//   return await launchUrl(
+//     uri as Uri,
+//     mode: LaunchMode.platformDefault,
+//   );
+// }
+// Future<bool> _onCreateWindow(
+//     InAppWebViewController controller, CreateWindowAction action) async {
+//   var uri = action.request.url;
+//   if (uri == null) {
+//     // controller.goBack();
+//     return false;
+//   }
+//   final uriString = uri.toString();
+//   if (uriString.startsWith('http://') || uriString.startsWith('https://')) {
+//     return true;
+//   } else {
+//     // controller.goBack();
+//     _launchURL(uriString);
+//     return false;
+//   }
+// }
