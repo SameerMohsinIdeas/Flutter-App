@@ -1,0 +1,782 @@
+//check line 370 for the latest code
+
+// ignore_for_file: prefer_const_constructors
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:ui';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+List<String> linksToOpenInChrome = [
+  "mailto:corporate@ideas.com.pk",
+  "https://api.whatsapp.com/send/",
+  "https://www.facebook.com/GulahmedFashion",
+  "https://www.instagram.com/gulahmedfashion/",
+  "https://twitter.com/gulahmedfashion?lang=en",
+  "https://www.youtube.com/channel/UCsAIxl3qvpy1DofpwDEx6Ow",
+  "https://www.tiktok.com/@ideasbygulahmed",
+  "https://web.whatsapp.com/send?text=https://www.gulahmedshop.com/",
+  "https://m.facebook.com/login",
+  "https://twitter.com/intent/tweet",
+  "http://pinterest.com/pin/create/button/"
+];
+//production
+String _baseUrlProduction = "https://gulahmedshop.com/";
+//staging
+String _baseUrlStaging = "https://mcstaging.gulahmedshop.com/";
+String url = _baseUrlProduction;
+InAppWebViewController? webViewController;
+
+Future main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS) {
+    await InAppWebViewController.setWebContentsDebuggingEnabled(kDebugMode);
+  }
+  await Permission.storage.request();
+  await Permission.camera.request();
+  await Permission.location.request();
+  runApp(MaterialApp(debugShowCheckedModeBanner: false, home: MyApp()));
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with TickerProviderStateMixin {
+  final GlobalKey webViewKey = GlobalKey();
+
+  InAppWebViewSettings settings = InAppWebViewSettings(
+      userAgent: Platform.isAndroid ? "Android" : "iOS",
+      preferredContentMode: UserPreferredContentMode.MOBILE,
+      cacheEnabled: true,
+      clearCache: true,
+      useHybridComposition: true,
+      appCachePath: "assets/cache",
+      cacheMode: CacheMode.LOAD_DEFAULT,
+      isInspectable: kDebugMode,
+      useShouldOverrideUrlLoading: true,
+      sharedCookiesEnabled: true,
+      javaScriptCanOpenWindowsAutomatically: false,
+      transparentBackground: true,
+      mediaPlaybackRequiresUserGesture: false,
+      allowsInlineMediaPlayback: true,
+      iframeAllow: "camera;",
+      allowUniversalAccessFromFileURLs: true,
+      iframeAllowFullscreen: true);
+
+  PullToRefreshController? pullToRefreshController;
+  double progress = 0;
+  @override
+  void initState() {
+    super.initState();
+    clearCacheAfterInterval(Duration(minutes: 15));
+    pullToRefreshController = kIsWeb
+        ? null
+        : PullToRefreshController(
+            settings: PullToRefreshSettings(
+              color: Colors.green,
+            ),
+            onRefresh: () async {
+              if (defaultTargetPlatform == TargetPlatform.android) {
+                webViewController?.reload();
+              } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+                webViewController?.reload();
+              }
+            },
+          );
+  }
+
+//overrideurlLoading
+  Future<NavigationActionPolicy> _shouldOverrideUrlLoading(
+      InAppWebViewController controller,
+      NavigationAction shouldOverrideUrlLoadingRequest) async {
+    var uri = await shouldOverrideUrlLoadingRequest.request.url;
+    if (uri == null) {
+      return NavigationActionPolicy.CANCEL;
+    }
+    final uriString = await uri.toString();
+
+    print("sameer");
+    for (var element in linksToOpenInChrome) {
+      print("url :" + uriString);
+      print("List: " + element);
+    }
+    if (uriString.startsWith("whatsapp://send") ||
+        uriString.startsWith("https://m.facebook.com/login") ||
+        uriString.startsWith("https://twitter.com/intent/tweet") ||
+        uriString.startsWith(" http://pinterest.com/pin")) {
+      if (await canLaunchUrl(uri)) {
+        // await launchUrl(uri, mode: LaunchMode.externalApplication);
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
+        launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+      return NavigationActionPolicy.CANCEL;
+    }
+    if (linksToOpenInChrome.contains(uriString)) {
+      print("links to open in chrome");
+      // await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
+      return NavigationActionPolicy.CANCEL;
+    } else if (uriString.contains("https://www.gulahmedshop.com/") ||
+        uriString.contains("https://uae.gulahmedshop.com/") ||
+        uriString.contains("https://mcstaging.gulahmedshop.com/") ||
+        uriString.contains("https://mcstaginguae.gulahmedshop.com/")) {
+      print("links to open in app: " + uriString);
+      return NavigationActionPolicy.ALLOW;
+    } else {
+      // Handle other schemes as needed
+      // await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
+      return NavigationActionPolicy.CANCEL;
+    }
+  }
+
+  Future<void> SetCachedData(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentUrl = await webViewController?.getUrl();
+    final htmlContent = await webViewController?.getHtml();
+    print("=>htmlContent: " + await htmlContent.toString());
+    final cacheKey = 'cached_html_${await url.toString()}';
+    final existing = prefs.containsKey(cacheKey);
+    print("\n=>cache key: " + cacheKey);
+    print("=>get cache data " + existing.toString());
+    try {
+      print("=>in try");
+      if (htmlContent != null && existing != true) {
+        // Only set cache if it doesn't already exist
+        print("=>in if");
+        await prefs.setString(cacheKey, jsonEncode(htmlContent));
+        print('=>set:');
+        print("=>url: " +
+            cacheKey +
+            " content: " +
+            htmlContent.toString() +
+            "\n");
+      } else {
+        print("=>in else");
+        print('=>Cache already exists, skipping set.');
+        // return await loadCachedData(await cacheKey);
+      }
+    } catch (e) {
+      // await loadCachedData(await cacheKey);
+      print("=>in catch");
+      print("=>" + e.toString());
+    }
+  }
+
+  Future<void> loadCachedData(cacheKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    print("=>cache key in loadcache: " + await cacheKey);
+    try {
+      final checkHtml = prefs.containsKey(await cacheKey);
+      if (checkHtml == true) {
+        final cachedHtml = prefs.getString(await cacheKey).toString();
+        // if (await cachedHtml != (null)) {
+        print("=>saved cached data: " + await cachedHtml);
+        await webViewController?.loadData(
+            data: await cachedHtml, mimeType: "text/html", historyUrl: null);
+        // }
+      }
+    } catch (e) {
+      print("=>error in loadcache" + e.toString());
+    }
+
+    //  else {
+    //   print('null ideas');
+    //   await webViewController?.loadUrl(
+    //       urlRequest: URLRequest(url: WebUri(site)));
+    // }
+  }
+
+  Future<void> clearCacheAfterInterval(Duration interval) async {
+    await Future.delayed(interval, () async {
+      final prefs = await SharedPreferences.getInstance();
+      // await prefs.clear();
+      // print('Cache cleared after interval');
+      await prefs.clear();
+      await InAppWebViewController.clearAllCache();
+      print("=>cache cleared successfully");
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        body: SafeArea(
+            child: Column(children: <Widget>[
+      Expanded(
+        child: Stack(
+          children: [
+            WillPopScope(
+              onWillPop: () async {
+                final controller = webViewController;
+                if (controller != null) {
+                  if (await controller.canGoBack()) {
+                    controller.goBack();
+                    return false;
+                  }
+                }
+                return true;
+              },
+              child: InAppWebView(
+                key: webViewKey,
+                initialUrlRequest: URLRequest(url: WebUri(url)),
+                initialSettings: settings,
+                pullToRefreshController: pullToRefreshController,
+                onWebViewCreated: (controller) {
+                  webViewController = controller;
+                },
+                onPermissionRequest: (controller, request) async {
+                  return PermissionResponse(
+                      resources: request.resources,
+                      action: PermissionResponseAction.GRANT);
+                },
+                shouldOverrideUrlLoading: _shouldOverrideUrlLoading,
+                onLoadStart: (controller, url) async {
+                  // print("=>await url: " + await url.toString());
+                  final cacheKey = 'cached_html_${await url.toString()}';
+                  print("=>" + DateTime.now().toString());
+                  // await loadCachedData(await cacheKey);
+                  // await SetCachedData(await url.toString());
+                },
+                onLoadStop: (controller, url) async {
+                  pullToRefreshController?.endRefreshing();
+                  final cacheKey = 'cached_html_${await url.toString()}';
+                  print("=>" + DateTime.now().toString());
+                  print("=>delay of 1-min");
+                  await Future.delayed(Duration(minutes: 2), () async {
+                    SetCachedData(await url.toString());
+                  });
+                  print("=>delay of 1-min complete");
+                  // await SetCachedData(await cacheKey);
+                  // clearCacheAfterInterval(Duration(seconds: 20));
+                },
+                onReceivedError: (controller, request, error) {
+                  pullToRefreshController?.endRefreshing();
+                },
+                onProgressChanged: (controller, progress) {
+                  if (progress == 100) {
+                    pullToRefreshController?.endRefreshing();
+                  }
+                  setState(() {
+                    this.progress = progress / 100;
+                  });
+                },
+                onCreateWindow: (controller, createWindowAction) async {
+                  // create a headless WebView using the createWindowAction.windowId to get the correct URL
+                  HeadlessInAppWebView? headlessWebView;
+                  headlessWebView = HeadlessInAppWebView(
+                    windowId: createWindowAction.windowId,
+                    onLoadStart: (controller, url) async {
+                      if (url != null) {
+                        WebUri? currentUrl = await webViewController?.getUrl();
+                        print("Current Url: ");
+                        print(currentUrl);
+                        webViewController?.loadUrl(
+                            urlRequest: URLRequest(url: currentUrl));
+                        launchUrl(
+                          url,
+                        ); // to open with the system browser
+                        // or use the https://pub.dev/packages/url_launcher plugin
+                      }
+                      // dispose it immediately
+                      await headlessWebView?.dispose();
+                      headlessWebView = null;
+                    },
+                  );
+                  headlessWebView?.run();
+                  // return true to tell that we are handling the new window creation action
+                  return true;
+                },
+                onUpdateVisitedHistory: (controller, url, androidIsReload) {
+                  print("here is the url: " + url.toString());
+                },
+                onConsoleMessage: (controller, consoleMessage) {
+                  if (kDebugMode) {
+                    print(consoleMessage);
+                  }
+                },
+              ),
+            ),
+            // Loading(progress)
+            progress < 1.0
+                ? LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.white,
+                    color: Colors.green,
+                  )
+                : Container(),
+          ],
+        ),
+      ),
+    ])));
+  }
+}
+
+//loading function if the page is not loaded
+Loading(progress) {
+  return progress < 1.0
+      ? Center(
+          child: Container(
+              height: double.infinity,
+              width: double.infinity,
+              color: Colors.grey.withOpacity(0.5),
+              child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                  child: Image.asset(
+                    "assets/loader.gif",
+                    scale: 1.7,
+                  ))),
+        )
+      : Container();
+}
+
+//unused
+// Future<bool> _launchURL(String uri) async {
+//   return await launchUrl(
+//     uri as Uri,
+//     mode: LaunchMode.platformDefault,
+//   );
+// }
+// Future<bool> _onCreateWindow(
+//     InAppWebViewController controller, CreateWindowAction action) async {
+//   var uri = action.request.url;
+//   if (uri == null) {
+//     // controller.goBack();
+//     return false;
+//   }
+//   final uriString = uri.toString();
+//   if (uriString.startsWith('http://') || uriString.startsWith('https://')) {
+//     return true;
+//   } else {
+//     // controller.goBack();
+//     _launchURL(uriString);
+//     return false;
+//   }
+// }
+
+/*this is the code with login*/
+// ignore_for_file: prefer_const_constructors
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:ui';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:gulahmedshop/home.dart';
+import 'package:gulahmedshop/test.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+List<String> linksToOpenInChrome = [
+  "mailto:corporate@ideas.com.pk",
+  "https://api.whatsapp.com/send/",
+  "https://www.facebook.com/GulahmedFashion",
+  "https://www.instagram.com/gulahmedfashion/",
+  "https://twitter.com/gulahmedfashion?lang=en",
+  "https://www.youtube.com/channel/UCsAIxl3qvpy1DofpwDEx6Ow",
+  "https://www.tiktok.com/@ideasbygulahmed",
+  "https://web.whatsapp.com/send?text=https://www.gulahmedshop.com/",
+  "https://m.facebook.com/login",
+  "https://twitter.com/intent/tweet",
+  "http://pinterest.com/pin/create/button/"
+];
+//production
+String _baseUrlProduction = "https://gulahmedshop.com/";
+//staging
+String _baseUrlStaging = "https://mcstaging.gulahmedshop.com/";
+// String url = "https://pk.khaadi.com/";
+// String url = "https://pearl.weltpixel.com/v5/customer/account/login";
+String url = _baseUrlProduction;
+
+class Home extends StatefulWidget {
+  const Home({super.key});
+
+  @override
+  State<Home> createState() => _HomeState();
+}
+
+class _HomeState extends State<Home> with TickerProviderStateMixin {
+  final GlobalKey webViewKey = GlobalKey();
+
+  InAppWebViewController? webViewController;
+  Future<void> goHome() async {
+    // await webViewController?.loadUrl(
+    //     urlRequest: URLRequest(
+    //         url: WebUri(
+    //             "https://www.gulahmedshop.com/sociallogin/account/loginPost/")));
+    await webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+  }
+
+  handleClick() async {
+    final defaultUserAgent = await InAppWebViewController.getDefaultUserAgent();
+    if (kDebugMode) {
+      print("Default User Agent: $defaultUserAgent");
+    }
+
+    String? newUserAgent;
+    String os = Platform.operatingSystem.toString().toUpperCase();
+    if (os == "ANDROID") {
+      print("=> in target platform android");
+      // Remove "wv" from the Android WebView default user agent
+      // https://developer.chrome.com/docs/multidevice/user-agent/#webview-on-android
+      newUserAgent = defaultUserAgent.replaceFirst("; wv)", ")");
+      print("=>newUserAgent: $newUserAgent");
+    } else {
+      newUserAgent = "$defaultUserAgent Safari/604.1";
+      print("=>newUserAgent: $newUserAgent");
+    }
+    if (kDebugMode) {
+      print("New User Agent: $newUserAgent");
+    }
+    await webViewController?.setSettings(
+        settings:
+            InAppWebViewSettings(userAgent: "Chrome/91.0.4472.124 Safari/604.1")
+        // userAgent: "random")
+
+        );
+    // await goHome();
+  }
+
+  InAppWebViewSettings settings = InAppWebViewSettings(
+      // userAgent: "Chrome/91.0.4472.124 Safari/604.1",
+      // userAgent:
+      //     "Mozilla/5.0 (Linux; Android 14; sdk_gphone64_x86_64 Build/UPB5.230623.003) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/113.0.5672.136 Mobile Safari/537.36",
+      userAgent:
+          "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Mobile Safari/537.36",
+      safeBrowsingEnabled: true,
+      allowContentAccess: true,
+      thirdPartyCookiesEnabled: true,
+      domStorageEnabled: true,
+      databaseEnabled: true,
+      useOnLoadResource: true,
+      sharedCookiesEnabled: true,
+      preferredContentMode: UserPreferredContentMode.MOBILE,
+      cacheEnabled: true,
+      supportMultipleWindows: true,
+      useHybridComposition: true,
+      clearCache: true,
+      clearSessionCache: true,
+      useShouldOverrideUrlLoading: true,
+      cacheMode: CacheMode.LOAD_CACHE_ELSE_NETWORK,
+      isInspectable: kDebugMode,
+      javaScriptEnabled: true,
+      javaScriptCanOpenWindowsAutomatically: true,
+      transparentBackground: true,
+      mediaPlaybackRequiresUserGesture: false,
+      allowsInlineMediaPlayback: true,
+      iframeAllow: "camera;",
+      iframeAllowFullscreen: true);
+
+  PullToRefreshController? pullToRefreshController;
+  double progress = 0;
+  Future<void> clearCacheAfterInterval(Duration interval) async {
+    await Future.delayed(interval, () async {
+      // final prefs = await SharedPreferences.getInstance();
+      // await prefs.clear();
+      // print('Cache cleared after interval');
+      // await prefs.clear();
+      await InAppWebViewController.clearAllCache(includeDiskFiles: true)
+          .whenComplete(
+              () => print("whenComplete=>cache cleared successfully"));
+      // print("=>cache cleared successfully");
+    });
+  }
+
+  Future<NavigationActionPolicy> _shouldOverrideUrlLoading(
+      InAppWebViewController controller,
+      NavigationAction shouldOverrideUrlLoadingRequest) async {
+    var uri = shouldOverrideUrlLoadingRequest.request.url;
+    if (uri == null) {
+      return NavigationActionPolicy.CANCEL;
+    }
+
+    final uriString = uri.toString();
+    //socail sites to open on web or the app
+    if (uriString.startsWith("whatsapp://send") ||
+        uriString.startsWith("https://web.whatsapp.com/send") ||
+        uriString.startsWith("https://m.facebook.com/login") ||
+        uriString.startsWith("https://twitter.com/intent/tweet") ||
+        uriString.startsWith(" http://pinterest.com/pin")) {
+      print("=>uriString: " + uriString.toString());
+      if (uriString.contains("https://web.whatsapp.com/send")) {
+        print("=>uriString: Whatsapp " + uriString.toString());
+        print("=>" + uriString.split("/send")[1].toString());
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(
+              Uri.parse(
+                  "whatsapp://send" + uriString.split("/send")[1].toString()),
+              mode: LaunchMode.externalNonBrowserApplication);
+          return NavigationActionPolicy.CANCEL;
+        }
+        return NavigationActionPolicy.CANCEL;
+      }
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
+      }
+      return NavigationActionPolicy.CANCEL;
+    }
+
+    //links to open in chrome
+    if (linksToOpenInChrome.toString().startsWith(uriString)) {
+      print("=>links to open in chrome");
+      print("=>uriString: " + uriString.toString());
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return NavigationActionPolicy.CANCEL;
+    }
+
+    //links to open in app
+    if (uriString.contains("https://www.gulahmedshop.com/") ||
+        uriString.contains("https://uae.gulahmedshop.com/") ||
+        uriString.contains("https://mcstaging.gulahmedshop.com/") ||
+        uriString.contains("https://mcstaginguae.gulahmedshop.com/")) {
+      print("=>links to open in app: " + uriString);
+      print("=>uriString: " + uriString.toString());
+      return NavigationActionPolicy.ALLOW;
+    } else {
+      // Handle other schemes as needed
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return NavigationActionPolicy.CANCEL;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    clearCacheAfterInterval(Duration(seconds: 5));
+    // handleClick();
+    print("=> handleClick func initState");
+    // webViewController?.setSettings(
+    //     settings: InAppWebViewSettings(
+    //         userAgent: Platform.operatingSystem.toUpperCase()));
+    pullToRefreshController = kIsWeb
+        ? null
+        : PullToRefreshController(
+            settings: PullToRefreshSettings(
+              color: Colors.green,
+            ),
+            onRefresh: () async {
+              if (defaultTargetPlatform == TargetPlatform.android) {
+                webViewController?.reload();
+              } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+                webViewController?.reload();
+              }
+            },
+          );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+          body: SafeArea(
+              child: Stack(
+        children: [
+          WillPopScope(
+            onWillPop: () async {
+              final controller = await webViewController;
+              if (controller != null) {
+                if (await controller.canGoBack()) {
+                  controller.goBack();
+                  return false;
+                }
+              }
+              return true;
+            },
+            child: InAppWebView(
+              key: webViewKey,
+              initialUrlRequest: URLRequest(url: WebUri(url)),
+              initialSettings: settings,
+              pullToRefreshController: pullToRefreshController,
+              onLoadResource: (controller, resource) async {
+                //  print ("resource=>"+await controller.evaluateJavascript(source: "navigator.userAgent").toString());
+              },
+              onWebViewCreated: (controller) async {
+                webViewController = controller;
+                // final c =await controller.evaluateJavascript(source: "navigator.userAgent");
+                // print("userAgent=>"+c.toString());
+                // controller.addJavaScriptHandler(
+                //     handlerName: 'openWhatsApp',
+                //     callback: (args) async {
+                //       var url = args[0];
+                //       await launchUrl(Uri.parse(url),
+                //           mode: LaunchMode.externalNonBrowserApplication);
+                //     });
+              },
+              onPermissionRequest: (controller, request) async {
+                return PermissionResponse(
+                    resources: request.resources,
+                    action: PermissionResponseAction.GRANT);
+              },
+              shouldOverrideUrlLoading: _shouldOverrideUrlLoading,
+              onLoadStart: (controller, url) async {
+                print("=>onloadStart: " + url.toString());
+                // if (url.toString().startsWith(
+                //     "https://www.gulahmedshop.com/sociallogin/account/login/type/google/")) {
+                //   // await goHome();
+                //   NavigationActionPolicy.ALLOW;
+                // }
+                // final defaultUserAgent =
+                //     await InAppWebViewController.getDefaultUserAgent();
+                // print("=>" + defaultUserAgent.toString());
+              },
+              onScrollChanged: (controller, x, y) {},
+              onLoadStop: (controller, url) async {
+                pullToRefreshController?.endRefreshing();
+                final htmlContent = await controller.getHtml();
+                // print("=>" + htmlContent.toString());
+                // await controller
+                //     .evaluateJavascript(
+                //         source:
+                //             "JSON.stringify(Object.keys(localStorage));")
+                //     .then((keys) async {
+                //   for (var key in jsonDecode(keys)) {
+                //     var value = await controller.evaluateJavascript(
+                //         source: "localStorage.getItem('$key');");
+                //     print("key=>" + value.toString());
+                //     // Store key-value pair in your local storage
+                //   }
+                // })
+                // if (url.toString().startsWith(
+                //         "https://accounts.google.com/o/oauth2/v2/") ||
+                //     url.toString().startsWith(
+                //         "https://www.facebook.com/dialog/oauth/")) {
+                //   // get your token from url
+                //   RegExp regExp = RegExp("access_token=(.*)");
+                //   String? token =
+                //       regExp.firstMatch(url?.toString() ?? '')?.group(1);
+                //   print(token);
+
+                //   // or using CookieManager
+                //   CookieManager cookieManager = CookieManager.instance();
+                //   Cookie? cookie = await cookieManager.getCookie(
+                //       url: WebUri(Uri.parse(
+                //               "https://gulahmedshop.com/auth-response")
+                //           .toString()),
+                //       name: "access_token");
+                //   print(cookie?.value ?? '');
+
+                //   // or using javascript to get access_token from localStorage
+                //   String? tokenFromJSEvaluation =
+                //       await controller.evaluateJavascript(
+                //           source: "localStorage.getItem('access_token')");
+                //   print("=>"+tokenFromJSEvaluation.toString());
+                // }
+              },
+              onReceivedError: (controller, request, error) {
+                print("onReceivedError=> " + error.toString());
+                pullToRefreshController?.endRefreshing();
+              },
+              onReceivedHttpError: (controller, request, errorResponse) {
+                print("onReceivedHttpError=> $errorResponse");
+              },
+              onProgressChanged: (controller, progress) {
+                if (progress == 100) {
+                  pullToRefreshController?.endRefreshing();
+                }
+                setState(() {
+                  this.progress = progress / 100;
+                });
+              },
+              onCreateWindow: (controller, createWindowAction) async {
+                // create a headless WebView using the createWindowAction.windowId to get the correct URL
+                HeadlessInAppWebView? headlessWebView;
+                headlessWebView = HeadlessInAppWebView(
+                  windowId: createWindowAction.windowId,
+                  onLoadStart: (controller, url) async {
+                    if (url != null) {
+                      print("=>onCreateWindow: $url");
+                      launchUrl(
+                        url,
+                      ); // to open with the system browser
+                      // or use the https://pub.dev/packages/url_launcher plugin
+                    }
+                    // dispose it immediately
+                    await headlessWebView?.dispose();
+                    headlessWebView = null;
+                  },
+                );
+                headlessWebView?.run();
+                // return true to tell that we are handling the new window creation action
+                return true;
+              },
+              onUpdateVisitedHistory: (controller, url, androidIsReload) {
+                String os = Platform.operatingSystem;
+                // print("=>" + os.toUpperCase());
+                print("=>here is the url: " + url.toString());
+              },
+              onConsoleMessage: (controller, consoleMessage) {
+                if (kDebugMode) {
+                  print(consoleMessage);
+                }
+              },
+            ),
+          ),
+          // progress < 1.0
+          //     ? Center(
+          //         child: Container(
+          //             height: double.infinity,
+          //             width: double.infinity,
+          //             color: Colors.grey.withOpacity(0.5),
+          //             child: BackdropFilter(
+          //                 filter:
+          //                     ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+          //                 child: Image.asset(
+          //                   "assets/loader.gif",
+          //                   scale: 1.7,
+          //                 ))),
+          //       )
+          //     : Container(),
+
+          progress < 1.0
+              ? LinearProgressIndicator(
+                  backgroundColor: Colors.white,
+                  color: Colors.green,
+                )
+              : Container(),
+        ],
+      ))),
+    );
+  }
+}
+
+
+  //unused
+  // Future<bool> _launchURL(String uri) async {
+  //   return await launchUrl(
+  //     uri as Uri,
+  //     mode: LaunchMode.platformDefault,
+  //   );
+  // }
+  // Future<bool> _onCreateWindow(
+  //     InAppWebViewController controller, CreateWindowAction action) async {
+  //   var uri = action.request.url;
+  //   if (uri == null) {
+  //     // controller.goBack();
+  //     return false;
+  //   }
+  //   final uriString = uri.toString();
+  //   if (uriString.startsWith('http://') || uriString.startsWith('https://')) {
+  //     return true;
+  //   } else {
+  //     // controller.goBack();
+  //     _launchURL(uriString);
+  //     return false;
+  //   }
+  // }
