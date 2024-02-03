@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "794361179548",
+    "project_id": "push-notification-e4513",
+    "storage_bucket": "push-notification-e4513.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:794361179548:android:ef89f364a1200108156c59",
+        "android_client_info": {
+          "package_name": "com.example.gulahmedshop.production"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEFUsCVXA21We2ytuzAOMXdi9oy6Nagb4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

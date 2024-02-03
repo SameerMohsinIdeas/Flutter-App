@@ -4,19 +4,38 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:gulahmedshop/home.dart';
-import 'package:gulahmedshop/test.dart';
+import 'package:gulahmedshop/firebase/Notification/firebase_init.dart';
+import 'package:gulahmedshop/Pages/Home.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-Future main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+import 'Pages/Message.dart';
 
+//navaigation key
+final navigatorKey = GlobalKey<NavigatorState>();
+
+//function to handle permission and initialization 
+Future PermissionInit() async {
+  await WidgetsFlutterBinding.ensureInitialized();
+
+  //check platform and assign debug mode
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android ||
       defaultTargetPlatform == TargetPlatform.iOS) {
     await InAppWebViewController.setWebContentsDebuggingEnabled(kDebugMode);
   }
+
+  //permission for camera and storage
   await Permission.camera.request();
   await Permission.storage.request();
+
+  //firebase permissions & initializtion
+  await FirebaseInit.firebaseInitAndState(navigatorKey);
+}
+
+Future main() async {
+  //all the permission handling
+  await PermissionInit();
+
+  //run application
   runApp(MyApp());
 }
 
@@ -30,9 +49,18 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
+    //type 1 for production, 2 for staging
+    int option = 1;
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-      home: Home(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => Home(
+              option: option,
+            ),
+        '/message': (context) => Message(),
+      },
     );
   }
 }

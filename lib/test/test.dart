@@ -1,30 +1,18 @@
-import 'dart:developer';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-// Future main() async {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   if (!kIsWeb &&
-//       kDebugMode &&
-//       defaultTargetPlatform == TargetPlatform.android) {
-//     await InAppWebViewController.setWebContentsDebuggingEnabled(kDebugMode);
-//   }
-
-//   runApp(const MaterialApp(home: HomeTest()));
-// }
-
-class HomeTest extends StatefulWidget {
-  const HomeTest({Key? key}) : super(key: key);
+class TestApp extends StatefulWidget {
+  const TestApp({Key? key}) : super(key: key);
 
   @override
-  State<HomeTest> createState() => _HomeTestState();
+  State<TestApp> createState() => _TestAppState();
 }
 
-class _HomeTestState extends State<HomeTest> {
+class _TestAppState extends State<TestApp> {
   final GlobalKey webViewKey = GlobalKey();
-  final homeUrl = WebUri("https://gulahmedshop.com/");
+  // final homeUrl = WebUri("https://www.epicgames.com/id/login");
+  final homeUrl = WebUri("https://www.gulahmedshop.com");
 
   InAppWebViewController? webViewController;
 
@@ -46,8 +34,6 @@ class _HomeTestState extends State<HomeTest> {
             // Remove "wv" from the Android WebView default user agent
             // https://developer.chrome.com/docs/multidevice/user-agent/#webview-on-android
             newUserAgent = defaultUserAgent.replaceFirst("; wv)", ")");
-            // newUserAgent =
-            //     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
             break;
           case TargetPlatform.iOS:
             // Add Safari/604.1 at the end of the iOS WKWebView default user agent
@@ -60,7 +46,7 @@ class _HomeTestState extends State<HomeTest> {
       case 2:
         // random desktop user agent
         newUserAgent =
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36';
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36';
         break;
     }
 
@@ -101,20 +87,11 @@ class _HomeTestState extends State<HomeTest> {
             child: InAppWebView(
               key: webViewKey,
               initialUrlRequest: URLRequest(url: homeUrl),
-              initialSettings: InAppWebViewSettings(
-                  isInspectable: kDebugMode,
-                  safeBrowsingEnabled: true,
-                  javaScriptEnabled: true),
               onWebViewCreated: (controller) {
                 webViewController = controller;
               },
               onLoadStart: (controller, url) {
-                // log("error", time: DateTime.now());
-              },
-              onReceivedError: (controller, request, error) {
-                log("Error: $error,", time: DateTime.now());
-                print("=>error");
-                print("=> $error");
+                print("=>url: $url");
               },
             ),
           ),
