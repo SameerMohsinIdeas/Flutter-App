@@ -1,9 +1,10 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:gulahmedshop/main.dart';
 
 class PushNotification {
-  static int i = 0;
+  static int  i = 0;
   //firebase messaging instance
   static final _firebaseMessaging = FirebaseMessaging.instance;
   //local notification plugin instance
@@ -45,6 +46,7 @@ class PushNotification {
   // on tap local notification in foreground
   static void onNotificationTap(NotificationResponse notificationResponse) {
     //navigate to message page with the response data
+    print("=>$notificationResponse");
     navigatorKey.currentState!
         .pushNamed("/message", arguments: notificationResponse);
   }
@@ -56,14 +58,17 @@ class PushNotification {
     required String payload,
   }) async {
     const AndroidNotificationDetails androidNotificationDetails =
-        AndroidNotificationDetails('1', 'Ideas',
-            channelDescription: 'your channel description',
-            importance: Importance.max,
+        AndroidNotificationDetails("1", 'Ideas',
+            // channelDescription: 'your channel description',
+            importance: Importance.high,
             priority: Priority.high,
-            ticker: 'ticker');
+            ticker: 'ticker',
+            color: Color(0xFF8CC63F),
+            channelShowBadge: true,
+            );
     const NotificationDetails notificationDetails =
         NotificationDetails(android: androidNotificationDetails);
     await _flutterLocalNotificationsPlugin
-        .show(i++, title, body, notificationDetails, payload: payload);
+        .show(i++, title, body,notificationDetails, payload: payload);
   }
 }

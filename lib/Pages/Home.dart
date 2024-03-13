@@ -7,7 +7,8 @@ import 'package:gulahmedshop/WebView/customwebview.dart';
 String _baseUrlProduction = "https://gulahmedshop.com/";
 //staging url
 String _baseUrlStaging = "https://mcstaging.gulahmedshop.com/";
-//method to get the url based on the option
+
+//method to get the url based on the option provided in main.dart
 getUrl(int i) {
   //var for url
   final url;
@@ -18,6 +19,7 @@ getUrl(int i) {
   } else if (i == 2) {
     //if 2 then staging url
     url = _baseUrlStaging.toString();
+    // url ="https://mcstaging.gulahmedshop.com/test-product-for-hbl-cybersource";
     return url;
   }
 }

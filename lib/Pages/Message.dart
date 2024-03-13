@@ -6,33 +6,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:gulahmedshop/WebView/customwebview.dart';
 
-class Message extends StatefulWidget {
-  Message({super.key});
+class NotificationMessage extends StatefulWidget {
+  NotificationMessage({super.key});
 
   @override
-  State<Message> createState() => _MessageState();
+  State<NotificationMessage> createState() => _NotificationMessageState();
 }
 
-class _MessageState extends State<Message> with TickerProviderStateMixin {
+class _NotificationMessageState extends State<NotificationMessage>
+    with TickerProviderStateMixin {
   //define payload
   Map payload = {};
+
   @override
   Widget build(BuildContext context) {
     //get data from route
     final data = ModalRoute.of(context)!.settings.arguments;
+
     //if it is a remote msg
     if (data is RemoteMessage) {
       payload = data.data;
       print("=>payload: $payload");
     }
+
     //if notification response
     if (data is NotificationResponse) {
       payload = jsonDecode(data.payload!);
       print("=>payloadNotificationResponse: $payload");
     }
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      body: CustomWebView(url: payload["url"].toString()),
+      body: CustomWebView(
+          url: payload["url"].toString()), //to go to the link in the url
     );
   }
 }

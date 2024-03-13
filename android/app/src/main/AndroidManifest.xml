@@ -17,10 +17,10 @@
             android:authorities="${applicationId}.flutter_inappwebview_android.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
-    <meta-data
+       <meta-data
         android:name="android.support.FILE_PROVIDER_PATHS"
         android:resource="@xml/provider_paths" />
-</provider>
+       </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -37,14 +37,15 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-              <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
+             <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
              <intent-filter android:autoVerify="true">
                  <action android:name="android.intent.action.VIEW" />
                  <category android:name="android.intent.category.DEFAULT" />
                  <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="www.gulahmedshop.com" />
+                <data android:scheme="https" android:host="www.google.com" />
                 <data android:scheme="http" />
-            </intent-filter>
+             </intent-filter>
  
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -62,5 +63,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        
     </application>
 </manifest>
